@@ -1,0 +1,66 @@
+/* Design system — Scientific Data Harvester */
+:root {
+  --bg: #0b0e14;
+  --bg-elevated: #111827;
+  --surface: #1a1f2e;
+  --surface-hover: #232a3d;
+  --border: #2d3748;
+  --border-focus: #0ea5e9;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --accent: #0ea5e9;
+  --accent-hover: #0284c7;
+  --accent-muted: rgba(14, 165, 233, 0.15);
+  --error: #f87171;
+  --error-bg: rgba(248, 113, 113, 0.1);
+  --success: #34d399;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { min-height: 100vh; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+input, textarea {
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+input::placeholder,
+textarea::placeholder { color: var(--text-dim); }
+
+/* Utilities */
+.loading-placeholder {
+  color: var(--text-muted);
+  padding: 2rem;
+  text-align: center;
+}
+
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}

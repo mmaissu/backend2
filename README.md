@@ -1,0 +1,112 @@
+# Scientific Data Harvester
+
+Сервис сбора и анализа метаданных научных публикаций.
+
+## Архитектура
+
+- **Backend**: FastAPI, async SQLAlchemy (PostgreSQL), JWT (User/Admin), Pydantic, bcrypt
+- **Frontend**: React + Vite + TypeScript
+- **БД**: PostgreSQL 16
+- **Безопасность**: хеширование паролей, заголовки XSS, параметризованные запросы (защита от SQLi)
+
+## Запуск через Docker
+
+1. Откройте терминал в папке проекта:
+   ```powershell
+   cd "C:\Users\Maira Suleimen\scientific-data-harvester"
+   ```
+2. Запустите контейнеры (первый раз сборка займёт несколько минут):
+   ```powershell
+   docker compose up --build
+   ```
+   Окно не закрывайте — в нём будут логи. Дождитесь строк:
+   - `Application startup complete` (backend)
+   - контейнеры `db`, `backend`, `frontend` в статусе Up.
+
+3. Откройте в браузере:
+   - **Фронт (приложение):** http://localhost:3000  
+   - **API:** http://localhost:8000/api  
+   - **Документация API:** http://localhost:8000/api/docs  
+
+Если видите «can't reach this page» / «refused to connect»:
+- Убедитесь, что Docker Desktop запущен.
+- Проверьте контейнеры: в **другом** терминале выполните `docker compose ps` — все три сервиса должны быть **Up**. Если какой-то Exited — смотрите логи: `docker compose logs backend` или `docker compose logs frontend`.
+- Можно запускать в фоне: `docker compose up --build -d`, затем открыть ссылки через 15–20 секунд.  
+
+## Роль администратора (Admin)
+
+**Вариант 1 — при регистрации:** задайте переменную окружения `INITIAL_ADMIN_EMAIL` (ваш email). При регистрации пользователя с этим email ему присвоится роль Admin.
+
+```powershell
+$env:INITIAL_ADMIN_EMAIL = "mairasuleimen@icloud.com"
+docker compose up --build -d
+```
+
+Затем зарегистрируйте **новый** аккаунт с этим email — он будет Admin. (Если такой email уже есть, используйте вариант 2.)
+
+**Вариант 2 — выдать Admin уже зарегистрированному пользователю:** выполните SQL в БД:
+
+```powershell
+docker compose exec db psql -U harvester -d harvester -c "UPDATE users SET role = 'ADMIN' WHERE email = 'mairasuleimen@icloud.com';"
+```
+(Если будет ошибка про enum, попробуйте `'admin'` вместо `'ADMIN'`.)
+
+После этого войдите под этим email — в токене будет роль `admin`.
+
+## Локальная разработка
+
+### Backend
+
+```bash
+cd backend
+pip install -e ".[dev]"
+# PostgreSQL должен быть запущен (или docker compose up db)
+export DATABASE_URL=postgresql+asyncpg://harvester:harvester@localhost:5432/harvester
+uvicorn app.main:app --reload --port 8000
+pytest -v
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Прокси на API: запросы к `/api` идут на `http://localhost:8000`.
+
+## API (кратко)
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| POST | /api/auth/register | Регистрация |
+| POST | /api/auth/login | Вход (JWT) |
+| GET | /api/auth/me | Текущий пользователь (Bearer) |
+| GET | /api/articles | Список статей (поиск, фильтр source, пагинация, сортировка) |
+| GET | /api/articles/{id} | Одна статья |
+| POST | /api/articles | Создать статью (auth) |
+| PATCH | /api/articles/{id} | Обновить (автор или Admin) |
+| DELETE | /api/articles/{id} | Удалить (автор или Admin) |
+
+## CI/CD
+
+GitHub Actions (`.github/workflows/ci.yml`): на push/PR в `main`/`develop` — тесты backend (pytest + Postgres), сборка frontend.
+
+## Структура проекта
+
+```
+scientific-data-harvester/
+├── backend/           # FastAPI, Clean Architecture
+│   ├── app/
+│   │   ├── api/       # Роуты auth, articles
+│   │   ├── core/      # security, deps (JWT, get_current_user)
+│   │   ├── domain/    # enums (UserRole)
+│   │   ├── infrastructure/  # database, models, metrics
+│   │   ├── middleware/      # Security headers
+│   │   └── schemas/   # Pydantic
+│   └── tests/
+├── frontend/          # React + Vite
+├── docker-compose.yml
+└── .github/workflows/ci.yml
+```

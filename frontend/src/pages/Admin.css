@@ -1,0 +1,94 @@
+/* Admin — панель с градиентными карточками */
+.admin-page {
+  max-width: 680px;
+  position: relative;
+}
+
+.admin-page::before {
+  content: "";
+  position: absolute;
+  top: -1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  height: 200px;
+  background: radial-gradient(
+    ellipse 60% 70% at 50% 0%,
+    rgba(14, 165, 233, 0.15) 0%,
+    rgba(59, 130, 246, 0.06) 50%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.admin-page h1 {
+  margin: 0 0 0.75rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  position: relative;
+}
+
+.admin-page h1::after {
+  content: "";
+  display: block;
+  width: 48px;
+  height: 4px;
+  margin-top: 0.5rem;
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+  border-radius: 2px;
+}
+
+.admin-welcome {
+  margin: 0 0 1.75rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(14, 165, 233, 0.05) 100%);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  border-radius: 12px;
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+.admin-welcome strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.admin-section {
+  margin-top: 1.5rem;
+  padding: 1.75rem;
+  background: linear-gradient(160deg, rgba(26, 31, 46, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  border-left: 4px solid;
+  border-image: linear-gradient(180deg, #0ea5e9, #38bdf8) 1;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.admin-section h2 {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.admin-section p {
+  margin: 0 0 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.admin-section p:last-child {
+  margin-bottom: 0;
+}
+
+.admin-section code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  padding: 0.2rem 0.5rem;
+  background: rgba(14, 165, 233, 0.12);
+  color: var(--accent);
+  border-radius: 6px;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+}

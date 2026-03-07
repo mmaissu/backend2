@@ -1,0 +1,133 @@
+/* CreateArticle — форма с градиентным оформлением */
+.create-article {
+  max-width: 580px;
+  position: relative;
+}
+
+.create-article::before {
+  content: "";
+  position: absolute;
+  top: -1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  height: 160px;
+  background: radial-gradient(
+    ellipse 60% 70% at 50% 0%,
+    rgba(14, 165, 233, 0.12) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.create-article h1 {
+  margin: 0 0 1.75rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  position: relative;
+}
+
+.create-article h1::after {
+  content: "";
+  display: block;
+  width: 48px;
+  height: 4px;
+  margin-top: 0.5rem;
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+  border-radius: 2px;
+}
+
+.create-article form {
+  padding: 1.75rem;
+  background: linear-gradient(160deg, rgba(26, 31, 46, 0.5) 0%, rgba(17, 24, 39, 0.7) 100%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.create-article label {
+  display: block;
+  margin: 1.25rem 0 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.create-article label:first-of-type {
+  margin-top: 0;
+}
+
+.create-article input,
+.create-article textarea {
+  width: 100%;
+  padding: 0.75rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(11, 14, 20, 0.6);
+  color: var(--text);
+  transition: all 0.2s ease;
+}
+
+.create-article input:focus,
+.create-article textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+}
+
+.create-article textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.create-article .form-error {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.15) 0%, rgba(248, 113, 113, 0.08) 100%);
+  color: var(--error);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.create-article .form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.create-article button[type="submit"] {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  box-shadow: 0 4px 20px rgba(14, 165, 233, 0.35);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.create-article button[type="submit"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 28px rgba(14, 165, 233, 0.45);
+}
+
+.create-article button[type="button"] {
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.create-article button[type="button"]:hover {
+  background: rgba(14, 165, 233, 0.08);
+  color: var(--text);
+  border-color: rgba(14, 165, 233, 0.3);
+}
