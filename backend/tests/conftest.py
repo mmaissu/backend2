@@ -1,55 +1,50 @@
-"""Pytest fixtures — test client, DB, auth."""
-import asyncio
-import os
-from typing import AsyncGenerator, Generator
+import sys
+import uuid
+from pathlib import Path
 
 import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from fastapi.testclient import TestClient
 
-from app.infrastructure.database import get_db
-from app.infrastructure.models import Base
-from app.main import app
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-TEST_DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql+asyncpg://harvester:harvester@localhost:5432/harvester_test",
-)
+from app.main import app  # noqa: E402
 
 
 @pytest.fixture(scope="session")
-def event_loop() -> Generator:
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+def client():
+    with TestClient(app) as test_client:
+        yield test_client
 
 
-@pytest_asyncio.fixture
-async def engine():
-    _engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-    # Ensure we use the same DB URL as CI when DATABASE_URL is set
-    async with _engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-    yield _engine
-    await _engine.dispose()
+@pytest.fixture()
+def unique_user():
+    uid = uuid.uuid4().hex[:8]
+    return {
+        "full_name": f"Test User {uid}",
+        "email": f"test_{uid}@example.com",
+        "password": "TestPass123!",
+    }
 
 
-@pytest_asyncio.fixture
-async def db_session(engine) -> AsyncGenerator[AsyncSession, None]:
-    async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    async with async_session() as session:
-        yield session
+@pytest.fixture()
+def registered_user(client, unique_user):
+    response = client.post("/api/auth/register", json=unique_user)
+    assert response.status_code in (200, 201), response.text
+    return unique_user
 
 
-@pytest_asyncio.fixture
-async def client(db_session: AsyncSession):
-    async def override_get_db():
-        yield db_session
-
-    app.dependency_overrides[get_db] = override_get_db
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
-    app.dependency_overrides.clear()
+@pytest.fixture()
+def access_token(client, registered_user):
+    response = client.post(
+        "/api/auth/login",
+        json={
+            "email": registered_user["email"],
+            "password": registered_user["password"],
+        },
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert "access_token" in data
+    return data["access_token"]
