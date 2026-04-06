@@ -1,133 +1,93 @@
-"""Articles CRUD API with search, filter, pagination."""
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import and_, func, or_, select, true
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import asc, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_user, get_current_user_optional
-from app.domain.enums import UserRole
 from app.infrastructure.database import get_db
-from app.infrastructure.models import ArticleMetadataModel, UserModel
-from app.schemas.article import (
-    ArticleListParams,
-    ArticleMetadataCreate,
-    ArticleMetadataResponse,
-    ArticleMetadataUpdate,
-)
-from app.schemas.common import PaginatedResponse
+from app.infrastructure.models import ArticleMetadataModel
 
 router = APIRouter()
 
 
-def _filter_criteria(params: ArticleListParams, created_by_id: str | None = None):
-    """Build filter expressions for reuse in count and list queries (SQL parameterized — no SQLi)."""
-    criteria = []
-    if params.search:
-        search = f"%{params.search}%"
-        criteria.append(
-            or_(
-                ArticleMetadataModel.title.ilike(search),
-                ArticleMetadataModel.abstract.ilike(search),
-            )
+@router.get("")
+async def get_articles(
+    db: AsyncSession = Depends(get_db),
+    search: str | None = Query(default=None),
+    only_with_doi: bool = Query(default=False),
+    sort_by: str = Query(default="newest"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=6, ge=1, le=50),
+):
+    query = select(ArticleMetadataModel)
+
+    if search:
+        search_pattern = f"%{search.lower()}%"
+        query = query.where(
+            func.lower(ArticleMetadataModel.title).like(search_pattern)
+            | func.lower(func.coalesce(ArticleMetadataModel.source, "")).like(search_pattern)
+            | func.lower(func.coalesce(ArticleMetadataModel.doi, "")).like(search_pattern)
         )
-    if params.source:
-        criteria.append(ArticleMetadataModel.source == params.source)
-    if created_by_id:
-        criteria.append(ArticleMetadataModel.created_by_id == created_by_id)
-    return and_(*criteria) if criteria else true()
+
+    if only_with_doi:
+        query = query.where(ArticleMetadataModel.doi.is_not(None))
+
+    if sort_by == "oldest":
+        query = query.order_by(asc(ArticleMetadataModel.created_at))
+    elif sort_by == "most_cited":
+        query = query.order_by(desc(func.coalesce(ArticleMetadataModel.cited_by_count, 0)))
+    elif sort_by == "least_cited":
+        query = query.order_by(asc(func.coalesce(ArticleMetadataModel.cited_by_count, 0)))
+    elif sort_by == "title_asc":
+        query = query.order_by(asc(ArticleMetadataModel.title))
+    elif sort_by == "title_desc":
+        query = query.order_by(desc(ArticleMetadataModel.title))
+    else:
+        query = query.order_by(desc(ArticleMetadataModel.created_at))
+
+    count_query = select(func.count()).select_from(query.subquery())
+    total_items = await db.scalar(count_query)
+    total_items = total_items or 0
+
+    offset = (page - 1) * page_size
+    query = query.offset(offset).limit(page_size)
+
+    result = await db.execute(query)
+    articles = result.scalars().all()
+
+    total_pages = (total_items + page_size - 1) // page_size if total_items > 0 else 1
+
+    return {
+        "items": [
+            {
+                "id": article.id,
+                "title": article.title,
+                "abstract": article.abstract,
+                "authors": article.authors,
+                "doi": article.doi,
+                "source": article.source,
+                "cited_by_count": article.cited_by_count,
+            }
+            for article in articles
+        ],
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total_items": total_items,
+            "total_pages": total_pages,
+        },
+    }
 
 
-def _apply_sort(q, params: ArticleListParams):
-    sort_col = getattr(ArticleMetadataModel, params.sort, ArticleMetadataModel.created_at)
-    return q.order_by(sort_col.desc() if params.order == "desc" else sort_col.asc())
-
-
-@router.get("", response_model=PaginatedResponse[ArticleMetadataResponse])
-async def list_articles(
-    db: AsyncSession = Depends(get_db),
-    current_user: UserModel | None = Depends(get_current_user_optional),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
-    search: str | None = Query(None, max_length=500),
-    source: str | None = Query(None, max_length=255),
-    mine: bool = Query(False, description="Only my articles"),
-    sort: str = Query("created_at", pattern="^(created_at|published_at|title)$"),
-    order: str = Query("desc", pattern="^(asc|desc)$"),
-):
-    if mine and not current_user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    created_by_id = str(current_user.id) if mine and current_user else None
-    params = ArticleListParams(skip=skip, limit=limit, search=search, source=source, sort=sort, order=order)
-    criteria = _filter_criteria(params, created_by_id=created_by_id)
-    count_q = select(func.count()).select_from(ArticleMetadataModel).where(criteria)
-    total_result = await db.execute(count_q)
-    total = total_result.scalar() or 0
-    q = select(ArticleMetadataModel).where(criteria)
-    q = _apply_sort(q, params)
-    q = q.offset(params.skip).limit(params.limit)
-    result = await db.execute(q)
-    items = result.scalars().all()
-    return PaginatedResponse(items=items, total=total, skip=params.skip, limit=params.limit)
-
-
-@router.get("/{article_id}", response_model=ArticleMetadataResponse)
-async def get_article(
-    article_id: str,
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(select(ArticleMetadataModel).where(ArticleMetadataModel.id == article_id))
+@router.delete("/{article_id}")
+async def delete_article(article_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(ArticleMetadataModel).where(ArticleMetadataModel.id == article_id)
+    )
     article = result.scalar_one_or_none()
-    if not article:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
-    return article
 
+    if article is None:
+        raise HTTPException(status_code=404, detail="Article not found")
 
-@router.post("", response_model=ArticleMetadataResponse, status_code=status.HTTP_201_CREATED)
-async def create_article(
-    body: ArticleMetadataCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
-):
-    article = ArticleMetadataModel(**body.model_dump(), created_by_id=str(current_user.id))
-    db.add(article)
-    await db.flush()
-    await db.refresh(article)
-    return article
-
-
-@router.patch("/{article_id}", response_model=ArticleMetadataResponse)
-async def update_article(
-    article_id: str,
-    body: ArticleMetadataUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
-):
-    result = await db.execute(select(ArticleMetadataModel).where(ArticleMetadataModel.id == article_id))
-    article = result.scalar_one_or_none()
-    if not article:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
-    if article.created_by_id != str(current_user.id) and current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to update this article")
-    data = body.model_dump(exclude_unset=True)
-    for k, v in data.items():
-        setattr(article, k, v)
-    await db.flush()
-    await db.refresh(article)
-    return article
-
-
-@router.delete("/{article_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_article(
-    article_id: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
-):
-    result = await db.execute(select(ArticleMetadataModel).where(ArticleMetadataModel.id == article_id))
-    article = result.scalar_one_or_none()
-    if not article:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
-    if article.created_by_id != str(current_user.id) and current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this article")
     await db.delete(article)
-    return None
+    await db.commit()
+
+    return {"message": "Article deleted successfully"}

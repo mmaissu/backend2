@@ -1,109 +1,141 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { apiFetch } from '../auth'
-import './Profile.css'
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import "./Profile.css";
 
 type ProfileData = {
-  user: { id: string; email: string; full_name: string | null; role: string; is_active: boolean }
-  articles_count: number
-  recent_articles: Array<{
-    id: string
-    title: string
-    source: string | null
-    published_at: string | null
-    created_at: string
-  }>
-}
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  is_active: boolean;
+};
 
 export default function Profile() {
-  const [data, setData] = useState<ProfileData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const navigate = useNavigate();
 
   useEffect(() => {
-    apiFetch('/profile')
-      .then(r => {
-        if (!r.ok) throw new Error('Failed to load')
-        return r.json()
-      })
-      .then(setData)
-      .catch(() => setData(null))
-      .finally(() => setLoading(false))
-  }, [])
+    const loadProfile = async () => {
+      try {
+        setLoading(true);
+        setError("");
 
-  if (loading) return <p className="loading-placeholder">Загрузка профиля…</p>
-  if (!data) return <p className="loading-placeholder">Не удалось загрузить профиль.</p>
+        const token = localStorage.getItem("access_token");
 
-  const { user, articles_count, recent_articles } = data
-  const initials = user.full_name
-    ? user.full_name.split(/\s+/).map(n => n[0]).slice(0, 2).join('').toUpperCase()
-    : user.email.slice(0, 2).toUpperCase()
+        if (!token) {
+          navigate("/login");
+          return;
+        }
+
+        const response = await fetch("http://127.0.0.1:8000/api/profile", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.status === 401) {
+          localStorage.removeItem("access_token");
+          navigate("/login");
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error("Failed to load profile");
+        }
+
+        const data = await response.json();
+        setProfile(data);
+      } catch {
+        setError("Could not load profile");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, [navigate]);
+
+  if (loading) {
+    return (
+      <div className="profile-page">
+        <p>Loading profile...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="profile-page">
+        <p className="profile-error">{error}</p>
+      </div>
+    );
+  }
+
+  const initials =
+    profile?.full_name
+      ?.split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "U";
+
+  const articlesCount = 12;
+  const recentCount = 3;
+  const statusText = profile?.is_active ? "Active" : "Inactive";
 
   return (
     <div className="profile-page">
-      <div className="profile-hero">
-        <div className="profile-hero-glow" />
-        <div className="profile-avatar">
-          <span className="avatar-initials">{initials}</span>
+      <div className="profile-top">
+        <div className="profile-avatar">{initials}</div>
+
+        <h1 className="profile-name">{profile?.full_name || "User"}</h1>
+        <p className="profile-email">{profile?.email}</p>
+
+        <p className="profile-bio">
+          Researching AI in medicine. Interested in machine learning, scientific
+          metadata and data analysis.
+        </p>
+
+        <div className="profile-actions">
+          <span className="profile-role">
+            {String(profile?.role).toLowerCase() === "admin"
+              ? "АДМИН"
+              : "ИССЛЕДОВАТЕЛЬ"}
+          </span>
+
+          <button
+            className="edit-profile-button"
+            onClick={() => navigate("/profile/edit")}
+          >
+            Редактировать профиль
+          </button>
         </div>
-        <h1 className="profile-name">{user.full_name || user.email}</h1>
-        <p className="profile-email">{user.email}</p>
-        <span className={`profile-role profile-role-${user.role}`}>{user.role === 'admin' ? 'Администратор' : 'Исследователь'}</span>
       </div>
 
       <div className="profile-stats">
         <div className="stat-card">
-          <span className="stat-icon">📚</span>
-          <span className="stat-value">{articles_count}</span>
-          <span className="stat-label">Публикаций</span>
+          <span className="stat-number">{articlesCount}</span>
+          <span className="stat-label">Saved Articles</span>
         </div>
+
         <div className="stat-card">
-          <span className="stat-icon">📄</span>
-          <span className="stat-value">{recent_articles.length}</span>
-          <span className="stat-label">Недавних</span>
+          <span className="stat-number">{recentCount}</span>
+          <span className="stat-label">Recent</span>
+        </div>
+
+        <div className="stat-card">
+          <span className="stat-number">{statusText}</span>
+          <span className="stat-label">Status</span>
         </div>
       </div>
 
-      <section className="profile-section">
-        <div className="profile-section-header">
-          <h2>Мои публикации</h2>
-          <Link to="/articles/new" className="btn-primary">Добавить статью</Link>
-        </div>
-        <p className="profile-section-desc">
-          Система для сбора и анализа метаданных научных публикаций. Здесь отображаются статьи, которые вы добавили.
-        </p>
-        {recent_articles.length === 0 ? (
-          <div className="profile-empty">
-            <div className="profile-empty-icon">📑</div>
-            <p>Пока нет публикаций</p>
-            <Link to="/articles/new" className="btn-primary">Добавить первую статью</Link>
-          </div>
-        ) : (
-          <ul className="profile-articles">
-            {recent_articles.map(a => (
-              <li key={a.id}>
-                <Link to={`/articles/${a.id}`} className="profile-article-link">
-                  <span className="profile-article-title">{a.title}</span>
-                  <span className="profile-article-meta">
-                    {a.source && <span>{a.source}</span>}
-                    {a.published_at && <span>{new Date(a.published_at).toLocaleDateString()}</span>}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-        {articles_count > recent_articles.length && (
-          <Link to="/articles?mine=1" className="profile-view-all">Все публикации ({articles_count}) →</Link>
-        )}
-      </section>
-
-      <section className="profile-about">
-        <h2>О системе</h2>
-        <p>
-          <strong>Scientific Data Harvester</strong> — платформа для исследователей, позволяющая собирать, хранить и анализировать
-          метаданные научных статей: название, аннотацию, авторов, DOI, источник, ключевые слова. Поиск, фильтрация и экспорт данных.
-        </p>
-      </section>
+      <div className="activity-card">
+        <h3>Recent Activity</h3>
+        <p>You saved new scientific articles recently and updated your profile.</p>
+      </div>
     </div>
-  )
+  );
 }

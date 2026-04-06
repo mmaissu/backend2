@@ -1,36 +1,84 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth'
-import './Auth.css'
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import "./Auth.css";
 
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const { login } = useAuth()
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
+    e.preventDefault();
+
     try {
-      await login(email, password)
-      navigate('/articles')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+      setLoading(true);
+      setError("");
+
+      const response = await fetch("http://127.0.0.1:8000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.detail || "Login failed");
+      }
+
+      if (!data?.access_token) {
+        throw new Error("Server did not return access token");
+      }
+
+      localStorage.setItem("access_token", data.access_token);
+
+      navigate("/harvester");
+    } catch (err: any) {
+      setError(err?.message || "Could not login");
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="auth-page">
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <h1>Sign in</h1>
-        {error && <div className="auth-error">{error}</div>}
-        <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
-        <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
-        <button type="submit">Sign in</button>
-        <p>No account? <Link to="/register">Register</Link></p>
-      </form>
+      <div className="auth-card">
+        <h1>Login</h1>
+
+        {error && <p className="error-text">{error}</p>}
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          <button type="submit" disabled={loading}>
+            {loading ? "Loading..." : "Login"}
+          </button>
+        </form>
+
+        <p>
+          No account? <Link to="/register">Register</Link>
+        </p>
+      </div>
     </div>
-  )
+  );
 }

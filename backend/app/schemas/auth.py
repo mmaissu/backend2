@@ -12,7 +12,11 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-
+class ProfileUpdate(BaseModel):
+    full_name: str | None = None
+    email: EmailStr | None = None
+    password: str | None = None
+    
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"

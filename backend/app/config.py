@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Database
-    database_url: str = "postgresql+asyncpg://harvester:harvester@db:5432/harvester"
+    database_url: str = "postgresql+asyncpg://postgres:262481@localhost:5433/postgres"
 
     # JWT
     jwt_secret_key: str = "change-me-in-production-use-env"

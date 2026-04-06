@@ -1,38 +1,87 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth'
-import './Auth.css'
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import "./Auth.css";
 
 export default function Register() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [fullName, setFullName] = useState('')
-  const [error, setError] = useState('')
-  const { register } = useAuth()
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
+    e.preventDefault();
+
     try {
-      await register(email, password, fullName || undefined)
-      navigate('/login')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed')
+      setLoading(true);
+      setError("");
+
+      const response = await fetch("http://127.0.0.1:8000/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          full_name: fullName,
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.detail || "Registration failed");
+      }
+
+      navigate("/login");
+    } catch (err: any) {
+      setError(err?.message || "Could not register");
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="auth-page">
-      <form className="auth-form" onSubmit={handleSubmit}>
+      <div className="auth-card">
         <h1>Register</h1>
-        {error && <div className="auth-error">{error}</div>}
-        <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
-        <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} />
-        <input type="text" placeholder="Full name (optional)" value={fullName} onChange={e => setFullName(e.target.value)} />
-        <button type="submit">Register</button>
-        <p>Already have an account? <Link to="/login">Sign in</Link></p>
-      </form>
+
+        {error && <p className="error-text">{error}</p>}
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <input
+            type="text"
+            placeholder="Full name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+          />
+
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          <button type="submit" disabled={loading}>
+            {loading ? "Loading..." : "Register"}
+          </button>
+        </form>
+
+        <p>
+          Already have an account? <Link to="/login">Login</Link>
+        </p>
+      </div>
     </div>
-  )
+  );
 }

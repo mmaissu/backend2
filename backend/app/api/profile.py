@@ -1,40 +1,61 @@
-"""Profile API — user info, stats, my publications."""
-from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user
+from app.core.security import get_password_hash
 from app.infrastructure.database import get_db
-from app.infrastructure.models import ArticleMetadataModel, UserModel
-from app.schemas.article import ArticleMetadataResponse
-from app.schemas.auth import UserResponse
+from app.infrastructure.models import UserModel
+from app.schemas.auth import ProfileUpdate
 
 router = APIRouter()
 
 
 @router.get("")
-async def get_profile(
-    current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Profile: user info, articles count, recent publications."""
-    count_result = await db.execute(
-        select(func.count()).select_from(ArticleMetadataModel).where(
-            ArticleMetadataModel.created_by_id == str(current_user.id)
-        )
-    )
-    articles_count = count_result.scalar() or 0
+async def get_profile(current_user: UserModel = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "role": current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role),
+        "is_active": current_user.is_active,
+    }
 
-    articles_result = await db.execute(
-        select(ArticleMetadataModel)
-        .where(ArticleMetadataModel.created_by_id == str(current_user.id))
-        .order_by(ArticleMetadataModel.created_at.desc())
-        .limit(10)
-    )
-    recent_articles = articles_result.scalars().all()
+
+@router.put("")
+async def update_profile(
+    payload: ProfileUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    if payload.email and payload.email != current_user.email:
+        result = await db.execute(
+            select(UserModel).where(UserModel.email == payload.email)
+        )
+        existing_user = result.scalar_one_or_none()
+
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already exists")
+
+        current_user.email = payload.email
+
+    if payload.full_name is not None:
+        current_user.full_name = payload.full_name
+
+    if payload.password:
+        current_user.hashed_password = get_password_hash(payload.password)
+
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
 
     return {
-        "user": UserResponse.from_user(current_user),
-        "articles_count": articles_count,
-        "recent_articles": [ArticleMetadataResponse.model_validate(a) for a in recent_articles],
+        "message": "Profile updated successfully",
+        "user": {
+            "id": current_user.id,
+            "email": current_user.email,
+            "full_name": current_user.full_name,
+            "role": current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role),
+            "is_active": current_user.is_active,
+        },
     }
