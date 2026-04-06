@@ -1,22 +1,17 @@
-"""Auth-related Pydantic schemas."""
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
 
 
 class UserCreate(BaseModel):
+    full_name: str
     email: EmailStr
-    password: str = Field(..., min_length=8, max_length=128)
-    full_name: str | None = Field(None, max_length=255)
+    password: str
 
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-class ProfileUpdate(BaseModel):
-    full_name: str | None = None
-    email: EmailStr | None = None
-    password: str | None = None
-    
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -24,16 +19,13 @@ class Token(BaseModel):
 
 class UserResponse(BaseModel):
     id: str
-    email: str
-    full_name: str | None
+    email: EmailStr
+    full_name: str | None = None
     role: str
     is_active: bool
 
-    model_config = {"from_attributes": True}
-
     @classmethod
-    def from_user(cls, user) -> "UserResponse":
-        """Build from ORM user so response is safe after session close."""
+    def from_user(cls, user):
         return cls(
             id=str(user.id),
             email=user.email,
