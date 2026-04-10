@@ -33,3 +33,8 @@ class UserResponse(BaseModel):
             role=user.role.value if hasattr(user.role, "value") else str(user.role),
             is_active=user.is_active,
         )
+
+
+class ProfileUpdate(BaseModel):
+    full_name: str | None = None
+    password: str | None = None

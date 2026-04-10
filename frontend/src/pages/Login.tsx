@@ -11,6 +11,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log("LOGIN CLICK");
     e.preventDefault();
 
     try {
@@ -27,6 +28,7 @@ export default function Login() {
           password,
         }),
       });
+      console.log("RESPONSE:", response);
 
       const data = await response.json().catch(() => null);
 

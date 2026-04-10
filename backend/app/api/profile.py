@@ -6,7 +6,7 @@ from app.core.deps import get_current_user
 from app.core.security import get_password_hash
 from app.infrastructure.database import get_db
 from app.infrastructure.models import UserModel
-from app.schemas.auth import ProfileUpdate
+from app.schemas.auth import ProfileUpdate, UserResponse
 
 router = APIRouter()
 

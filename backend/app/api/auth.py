@@ -1,4 +1,4 @@
-"""Auth endpoints: register, login, logout, me."""
+"""Auth endpoints: register, login, logout (token invalidation client-side), me."""
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,17 +21,12 @@ async def register(
 ) -> UserResponse:
     result = await db.execute(select(UserModel).where(UserModel.email == body.email))
     if result.scalar_one_or_none() is not None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
-        )
-
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
     settings = get_settings()
     is_admin = (
         settings.initial_admin_email is not None
         and body.email.strip().lower() == settings.initial_admin_email.strip().lower()
     )
-
     user = UserModel(
         email=body.email,
         hashed_password=get_password_hash(body.password),
@@ -39,9 +34,8 @@ async def register(
         role=UserRole.ADMIN if is_admin else UserRole.USER,
     )
     db.add(user)
-    await db.commit()
+    await db.flush()
     await db.refresh(user)
-
     return UserResponse.from_user(user)
 
 
@@ -52,21 +46,15 @@ async def login(
 ) -> Token:
     result = await db.execute(select(UserModel).where(UserModel.email == body.email))
     user = result.scalar_one_or_none()
-
     if not user or not verify_password(body.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
-
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User is disabled",
-        )
-
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is disabled")
     access_token = create_access_token(subject=str(user.id), role=user.role)
-    return Token(access_token=access_token, token_type="bearer")
+    return Token(access_token=access_token)
 
 
 @router.get("/me", response_model=UserResponse)
@@ -76,4 +64,5 @@ async def me(current_user: UserModel = Depends(get_current_user)) -> UserRespons
 
 @router.post("/logout")
 async def logout() -> dict:
+    """Logout: client must discard the token. No server-side blacklist in minimal setup."""
     return {"message": "Logged out. Discard the token on the client."}
