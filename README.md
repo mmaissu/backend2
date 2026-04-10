@@ -76,6 +76,41 @@ npm run dev
 
 Прокси на API: запросы к `/api` идут на `http://localhost:8000`.
 
+## Тестирование
+
+### Unit + Integration (pytest)
+
+Тесты используют **реальный Postgres** (модели содержат `UUID/JSONB`), поэтому для безопасного запуска нужен отдельный тестовый URL.
+
+Пример (если Postgres из `docker-compose.yml` запущен и доступен на `localhost:5433`):
+
+```bash
+cd backend
+
+# 1) (один раз) создайте отдельную тестовую БД
+docker compose exec db psql -U harvester -d harvester -c "CREATE DATABASE harvester_test;" || true
+
+# 2) запустите тесты
+export TEST_DATABASE_URL=postgresql+asyncpg://harvester:harvester@localhost:5433/harvester_test
+uv run pytest -v --cov=app --cov-report=term-missing
+```
+
+Структура тестов:
+- `backend/tests/test_unit_*.py`
+- `backend/tests/test_integration_*.py`
+
+### Load test (k6)
+
+```bash
+k6 run load-tests/k6_script.js
+```
+
+Можно переопределить базовый URL:
+
+```bash
+BASE_URL=http://localhost:8000 k6 run load-tests/k6_script.js
+```
+
 ## API (кратко)
 
 | Метод | Путь | Описание |

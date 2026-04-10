@@ -1,5 +1,9 @@
-def test_list_articles_returns_valid_structure(client):
-    response = client.get("/api/articles")
+import pytest
+
+
+@pytest.mark.asyncio
+async def test_list_articles_returns_valid_structure(async_client):
+    response = await async_client.get("/api/articles")
 
     assert response.status_code == 200, response.text
 
@@ -18,8 +22,9 @@ def test_list_articles_returns_valid_structure(client):
     assert "total_pages" in pagination
 
 
-def test_list_articles_supports_query_params(client):
-    response = client.get(
+@pytest.mark.asyncio
+async def test_list_articles_supports_query_params(async_client):
+    response = await async_client.get(
         "/api/articles?page=1&page_size=6&sort_by=newest&only_with_doi=false"
     )
 
@@ -30,6 +35,7 @@ def test_list_articles_supports_query_params(client):
     assert "pagination" in data
 
 
-def test_list_articles_invalid_page_fails(client):
-    response = client.get("/api/articles?page=0")
+@pytest.mark.asyncio
+async def test_list_articles_invalid_page_fails(async_client):
+    response = await async_client.get("/api/articles?page=0")
     assert response.status_code == 422, response.text

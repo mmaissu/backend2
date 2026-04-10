@@ -34,4 +34,7 @@ scientific_data_harvester.egg-info/requires.txt
 scientific_data_harvester.egg-info/top_level.txt
 tests/test_articles.py
 tests/test_auth.py
+tests/test_integration_articles.py
+tests/test_integration_harvest.py
 tests/test_profile.py
+tests/test_unit_harvest_service.py
