@@ -4,7 +4,13 @@ FROM python:3.11-slim
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    APP_ENV=production \
+    HOST=0.0.0.0 \
+    PORT=8000 \
+    WORKERS=2 \
+    LOG_LEVEL=INFO \
+    LOG_JSON=true
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -17,4 +23,4 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn app.main:app --host ${HOST} --port ${PORT} --workers ${WORKERS} --proxy-headers"]

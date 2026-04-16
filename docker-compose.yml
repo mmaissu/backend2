@@ -1,5 +1,5 @@
-# Scientific Data Harvester — Docker Compose
-# DB, Backend, Frontend
+# Scientific Data Harvester
+# Full stack: DB + API + Frontend + Prometheus + Grafana
 services:
   db:
     image: postgres:16-alpine
@@ -23,9 +23,14 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
+      APP_ENV: ${APP_ENV:-production}
       DATABASE_URL: postgresql+asyncpg://harvester:harvester@db:5432/harvester
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_JSON: ${LOG_JSON:-true}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      WORKERS: ${WORKERS:-2}
     ports:
       - "8000:8000"
     depends_on:
@@ -48,5 +53,35 @@ services:
     depends_on:
       - backend
 
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana:12.0.2
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+
 volumes:
   pgdata: {}
+  prometheus_data: {}
+  grafana_data: {}

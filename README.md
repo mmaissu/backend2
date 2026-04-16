@@ -27,11 +27,25 @@
    - **Фронт (приложение):** http://localhost:3000  
    - **API:** http://localhost:8000/api  
    - **Документация API:** http://localhost:8000/api/docs  
+- **Метрики backend:** http://localhost:8000/metrics
+- **Prometheus:** http://localhost:9090
+- **Grafana:** http://localhost:3001 (по умолчанию `admin/admin`)
 
 Если видите «can't reach this page» / «refused to connect»:
 - Убедитесь, что Docker Desktop запущен.
 - Проверьте контейнеры: в **другом** терминале выполните `docker compose ps` — все три сервиса должны быть **Up**. Если какой-то Exited — смотрите логи: `docker compose logs backend` или `docker compose logs frontend`.
 - Можно запускать в фоне: `docker compose up --build -d`, затем открыть ссылки через 15–20 секунд.  
+
+### Production-профиль
+
+Создайте `.env` на основе `.env.example` и поднимайте стек:
+
+```powershell
+copy .env.example .env
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+```
+
+Grafana автоматически поднимается с преднастроенным Prometheus datasource и дашбордом `Scientific Data Harvester`.
 
 ## Роль администратора (Admin)
 
