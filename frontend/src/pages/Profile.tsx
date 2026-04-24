@@ -30,7 +30,7 @@ export default function Profile() {
           return;
         }
 
-        const response = await fetch("http://127.0.0.1:8000/api/profile", {
+        const response = await fetch("https://backend-n79m.onrender.com/api/profile", {
           headers: {
             Authorization: `Bearer ${token}`,
           },

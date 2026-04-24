@@ -16,7 +16,7 @@ export default function EditProfile() {
     const loadProfile = async () => {
       const token = localStorage.getItem("access_token");
 
-      const res = await fetch("http://127.0.0.1:8000/api/profile", {
+      const res = await fetch("https://backend-n79m.onrender.com///api/profile", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -38,7 +38,7 @@ export default function EditProfile() {
 
       const token = localStorage.getItem("access_token");
 
-      const res = await fetch("http://127.0.0.1:8000/api/profile", {
+      const res = await fetch("https://backend-n79m.onrender.com/api/profile", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

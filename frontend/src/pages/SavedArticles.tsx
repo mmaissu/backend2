@@ -58,7 +58,7 @@ export default function SavedArticles() {
         params.append("search", search.trim());
       }
 
-      const response = await fetch(`http://127.0.0.1:8000/api/articles?${params.toString()}`);
+      const response = await fetch(`https://backend-n79m.onrender.com/api/articles?${params.toString()}`);
 
       if (!response.ok) {
         throw new Error("Failed to fetch saved articles");
@@ -100,7 +100,7 @@ export default function SavedArticles() {
         params.append("search", search.trim());
       }
 
-      const response = await fetch(`http://127.0.0.1:8000/api/articles?${params.toString()}`);
+      const response = await fetch(`https://backend-n79m.onrender.com/api/articles?${params.toString()}`);
 
       if (!response.ok) {
         throw new Error("Failed to fetch saved articles");
@@ -131,7 +131,7 @@ export default function SavedArticles() {
     try {
       setError("");
 
-      const response = await fetch(`http://127.0.0.1:8000/api/articles/${id}`, {
+      const response = await fetch(`https://backend-n79m.onrender.com/api/articles/${id}`, {
         method: "DELETE",
       });
 

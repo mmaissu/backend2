@@ -68,7 +68,7 @@ export default function Articles() {
       });
 
       const response = await fetch(
-        `http://127.0.0.1:8000/api/harvest?query=${encodeURIComponent(finalQuery)}&years=${finalYears}`
+        `https://backend-n79m.onrender.com/api/harvest?query=${encodeURIComponent(finalQuery)}&years=${finalYears}`
       );
 
       if (!response.ok) {
@@ -91,7 +91,7 @@ export default function Articles() {
       setError("");
       setSuccessMessage("");
 
-      const response = await fetch("http://127.0.0.1:8000/api/harvest/import", {
+      const response = await fetch("https://backend-n79m.onrender.com/api/harvest/import", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
