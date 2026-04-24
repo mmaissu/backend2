@@ -18,9 +18,13 @@ logger = logging.getLogger("app.main")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    setup_metrics(app)
-    await init_db()
-    yield
+    try:
+        setup_metrics(app)
+        await init_db()
+        yield
+    except Exception as e:
+        logger.error(f"Critical startup error: {e}")
+        raise e
 
 
 def create_app() -> FastAPI:
